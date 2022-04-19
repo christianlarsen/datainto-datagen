@@ -3,7 +3,7 @@
 ctl-opt actgrp('TEST7IFS');
 
 // data-gen examples
-datagen_customer();
+datagen_customer(); 
 
 datagen_customer_morecomplex();
 

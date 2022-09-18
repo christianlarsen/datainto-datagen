@@ -94,7 +94,7 @@ dcl-proc datagen_customer_toIFS;
         country varchar(40);
     end-ds;
     dcl-s @myFile varchar(100);
-
+ 
     // Let's fill our structure
     @customer.name = 'Christian';
     @customer.address = 'My home';
@@ -121,7 +121,6 @@ dcl-proc datainto_customer;
         address varchar(40);
         city varchar(20);
         country varchar(40);
-        utf8text varchar(40) ccsid(*utf8);
     end-ds;
     dcl-s @json varchar(1000);
 
@@ -131,8 +130,7 @@ dcl-proc datainto_customer;
               "name" : "My name" ,  +
               "address" : "My Address" ,   +
               "city" : "My City" ,   +
-              "country" : "My Country", +
-              "utf8text" : "10 €" +
+              "country" : "My Country" +
             }';
 
     // It is as easy as this...

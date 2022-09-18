@@ -30,7 +30,6 @@ dcl-proc datagen_customer;
         address varchar(40);
         city varchar(20);
         country varchar(40);
-        utf8text varchar(40) ccsid(*utf8);
     end-ds;
     dcl-s @json varchar(1000);
 
@@ -39,7 +38,6 @@ dcl-proc datagen_customer;
     @customer.address = 'My home';
     @customer.city = 'Málaga';
     @customer.country = 'Spain';
-    @customer.utf8text = '10 €';
 
     // Let's use data-gen
     // This will generate a JSON string named @json with the structure

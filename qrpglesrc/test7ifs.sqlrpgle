@@ -1,29 +1,58 @@
 **free
 
-ctl-opt actgrp('TEST7IFS');
+ctl-opt actgrp('TEST7IFS') main(main);
 
-// data-gen examples
-datagen_customer(); 
 
-datagen_customer_morecomplex();
+dcl-proc main;
 
-datagen_customer_toIFS();
+    exec sql
+        set option commit = *none;
+    
+    dcl-pr QUSRJOBI extpgm;             
+        *n  char(32766) options(*varsize);
+        *n  int(10:0) const;              
+        *n  char(8) const;                
+        *n  char(26) const;               
+        *n  char(16) const;               
+    end-pr;                             
+                                    
+    dcl-ds Job len(86) qualified inz ;  
+        Name  char(10) pos(9) ;         
+        User   char(10) pos(19) ;        
+        Number   char(6)  pos(29) ;        
+    end-ds ;                            
 
-// data-into examples
-datainto_customer();
+    dcl-s #job char(50);
 
-datainto_customer_morecomplex();
+    QUSRJOBI(Job:%size(Job):'JOBI0100':'*':'') ;
+    #job = %trim(job.number) + '/' + %trim(job.user) + '/' + %trim(job.name);
 
-datainto_customer_fromIFS();
+    // data-gen examples
+    datagen_customer(#job); 
 
-*inlr = '1';
-return;
+    datagen_customer_morecomplex();
+
+    datagen_customer_toIFS();
+
+    // data-into examples
+    datainto_customer(#job);
+
+    datainto_customer_morecomplex();
+
+    datainto_customer_fromIFS();
+
+    return;
+
+end-proc;
 
 ///
 // data-gen simple example.
 // How to use data-gen with a simple example.
 ///
 dcl-proc datagen_customer;
+    dcl-pi *n;
+        #job char(50);
+    end-pi;
     // @customer structure
     dcl-ds @customer qualified;
         name varchar(40);
@@ -32,6 +61,9 @@ dcl-proc datagen_customer;
         country varchar(40);
     end-ds;
     dcl-s @json varchar(1000);
+    dcl-s message_text varchar(100);
+    dcl-s message_second_level_text varchar(200);
+    dcl-s statement varchar(1000);
 
     // Let's fill our structure
     @customer.name = 'Christian';
@@ -42,7 +74,43 @@ dcl-proc datagen_customer;
     // Let's use data-gen
     // This will generate a JSON string named @json with the structure
     // of the @customer data structure.
-    data-gen @customer %data(@json) %gen('YAJL/YAJLDTAGEN');
+    
+    monitor;
+        data-gen @customer %data(@json) %gen('YAJL/YAJLDTAGEN');
+    on-error;
+        statement = ' +
+            select message_text, message_second_level_text +
+            from table(QSYS2.JOBLOG_INFO(''' +
+            %trim(#job) + 
+            ''')) +
+            where to_program = ''YAJLDTAGEN'' + 
+            order by ordinal_position + 
+            desc fetch first 1 row only';
+            
+        exec sql            
+            prepare stmPrep from :statement;
+
+        exec sql
+            declare curPrep cursor for stmPrep;
+
+        exec sql
+            open curPrep;
+        
+        exec sql
+            fetch curPrep into :message_text, :message_second_level_text;
+
+        exec sql
+            close curPrep;
+
+        //exec sql
+        //    select message_text, message_second_level_text into
+        //    :message_text, :message_second_level_text
+        //    from table('QSYS2.JOBLOG_INFO(:a)''')
+        //    where to_program = 'YAJLDTAGEN'
+        //    order by ordinal_position
+        //    desc fetch first 1 row only
+    endmon;
+    return;
 
 end-proc;
 
@@ -76,6 +144,7 @@ dcl-proc datagen_customer_morecomplex;
     // It is important to use "renameprefix" option to change the 
     // label names, this way:
     data-gen @customer %data(@json:'renameprefix= namefor_') %gen('YAJL/YAJLDTAGEN');
+    return;
 
 end-proc;
 
@@ -96,7 +165,7 @@ dcl-proc datagen_customer_toIFS;
     // Let's fill our structure
     @customer.name = 'Christian';
     @customer.address = 'My home';
-    @customer.city = 'Málaga';
+    @customer.city = 'Malaga';
     @customer.country = 'Spain';
 
     // Let's use data-gen
@@ -113,6 +182,9 @@ end-proc;
 // How to use data-into with a simple example.
 ///
 dcl-proc datainto_customer;
+    dcl-pi;
+        #job char(50);
+    end-pi;
     // @customer structure
     dcl-ds @customer qualified;
         name varchar(40);
@@ -121,6 +193,9 @@ dcl-proc datainto_customer;
         country varchar(40);
     end-ds;
     dcl-s @json varchar(1000);
+    dcl-s message_text varchar(100);
+    dcl-s message_second_level_text varchar(200);
+    dcl-s statemen varchar(1000);
 
     clear @customer;
     // Now, we have a json, and I need to import it to my structure...
@@ -132,7 +207,33 @@ dcl-proc datainto_customer;
             }';
 
     // It is as easy as this...
-    data-into @customer %data(@json) %parser('YAJL/YAJLINTO');
+    monitor;
+        data-into @customer %data(@json) %parser('YAJL/YAJLINTO');
+    on-error;
+        statemen = ' +
+            select message_text, message_second_level_text +
+            from table(QSYS2.JOBLOG_INFO(''' +
+            %trim(#job) + 
+            ''')) +
+            where to_program = ''YAJLINTO'' + 
+            order by ordinal_position + 
+            desc fetch first 1 row only';
+            
+        exec sql            
+            prepare stmPre from :statemen;
+
+        exec sql
+            declare curPre cursor for stmPre;
+
+        exec sql
+            open curPre;
+        
+        exec sql
+            fetch curPre into :message_text, :message_second_level_text;
+
+        exec sql
+            close curPre;
+    endmon;
 
 end-proc;
 
